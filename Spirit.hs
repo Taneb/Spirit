@@ -2,6 +2,7 @@ module Spirit (TypeSignature(..), spirit, spirit') where
 
 import Control.Applicative ((<|>))
 import Data.List (find)
+import Data.Maybe (fromMaybe)
 
 import Spirit.Names
 import Spirit.Types
@@ -19,17 +20,23 @@ reify :: [Name] -> [Assumption] -> Goal -> Maybe HaskellExpr
 reify names assumptions goal@(t :-> u) = match assumptions goal names <|> reify'
 
     -- If an outright match didn't work, try pattern matching and reifying the new goal.
-    where reify' = let (as', ns', pattern) = expand t names
-                   in reify ns' (as' ++ assumptions) u >>=
-                      \f -> Just $ Lambda pattern f
+    where reify' = let (n, expansions) = expand t names
+                   in if length expansions == 1
+                      then let (p, f) = makeCase $ head expansions
+                           in fmap (Lambda (if p == "" then n else n ++ "@" ++ p)) f
+                      else Just . Lambda n . Case (Literal n) $ map (fmap (fromMaybe (Literal "undefined")) . makeCase) expansions
+
+          makeCase (as', ns', pattern) = (pattern, reify ns' (as' ++ assumptions) u)
 
 reify names assumptions goal = match assumptions goal names
 
 -- Fully expand a type signature for pattern matching.
-expand :: TypeSignature -> [Name] -> ([Assumption], [Name], Pattern)
-expand t@(TVar _) (n:ns) = ([(Literal n, t)], ns, n)
-expand t@(_ :-> _) (n:ns) = ([(Literal n, t)], ns, n)
-expand t@(a :.: b) (n:m:o:ns) = ([(Literal n, t), (Literal m, a), (Literal o, b)], ns, n ++ "@(" ++ m ++ "," ++ o ++ ")")
+expand :: TypeSignature -> [Name] -> (Name, [([Assumption], [Name], Pattern)])
+expand t@(TVar _) (n:ns) = (n, [([(Literal n, t)], ns, "")])
+expand t@(_ :-> _) (n:ns) = (n, [([(Literal n, t)], ns, "")])
+expand t@(a :.: b) (m:n:o:ns) = (m, [([(Literal n, a), (Literal o, b), (Literal m, t)], ns, "(" ++ n ++ "," ++ o ++ ")")])
+expand t@(ListT a) (m:n:o:ns) = (m, [([(Literal n, a), (Literal o, ListT a), (Literal m, t)], ns, "(" ++ n ++ ":" ++ o ++ ")")
+                                    , ([(Literal m, t)], n:o:ns, "[]")])
 
 -- Check if the goal can be fulfilled by some combination of the assumptions
 match :: [Assumption] -> Goal -> [Name] -> Maybe HaskellExpr

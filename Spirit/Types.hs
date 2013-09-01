@@ -66,7 +66,7 @@ instance Show HaskellExpr where
                       | otherwise = "(" ++ show f ++ ") (" ++ show expr ++ ")"
 
     show (Case e cs) = "case " ++ show e ++ " of { " ++ show' cs ++ "}"
-        where show' ((p, e):cs) = p ++ " -> " ++ show e ++ "; "
+        where show' ((p, e):cs) = p ++ " -> " ++ show e ++ "; " ++ show' cs
               show' [] = ""
 
 -- Check if a function application is "simple" (not needing parens)

@@ -14,8 +14,8 @@ main = do demonstrate "id"    idType
           demonstrate "uncurry" uncurryType
           demonstrate "flip"    flipType
 
-          demonstrate "map"   mapType
-          demonstrate "foldr" foldrType
+          demonstrate "head" headType
+          demonstrate "tail" tailType
 
     where demonstrate name typ = do putStrLn $ name ++ " :: " ++ show typ
                                     print . fromMaybe (Literal "undefined") . spirit $ typ
@@ -29,5 +29,5 @@ main = do demonstrate "id"    idType
           uncurryType = (TVar 1 :-> TVar 2 :-> TVar 3) :-> TVar 1 :.: TVar 2 :-> TVar 3
           flipType    = (TVar 1 :-> TVar 2 :-> TVar 3) :-> TVar 2 :-> TVar 1 :-> TVar 3
 
-          mapType   = (TVar 1 :-> TVar 2) :-> ListT (TVar 1) :-> ListT (TVar 2)
-          foldrType = (TVar 1 :-> TVar 2 :-> TVar 2) :-> TVar 2 :-> ListT (TVar 1) :-> TVar 2
+          headType = ListT (TVar 1) :-> TVar 1
+          tailType = ListT (TVar 1) :-> ListT (TVar 1)
