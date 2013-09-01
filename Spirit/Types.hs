@@ -11,6 +11,7 @@ import Spirit.Names
 data TypeSignature = TVar Int
                    | TypeSignature :-> TypeSignature
                    | TypeSignature :.: TypeSignature
+                   | ListT TypeSignature
                      deriving (Eq)
 
 infixl 9 :.:
@@ -20,6 +21,7 @@ infixr 5 :->
 data HaskellExpr = Literal String
                  | Lambda Pattern HaskellExpr
                  | App HaskellExpr HaskellExpr
+                 | Case HaskellExpr [(Pattern, HaskellExpr)]
                    deriving (Eq)
 
 -- Type of names
@@ -38,14 +40,14 @@ type Pattern = String
 instance Show TypeSignature where
     show (TVar i) = nameList !! (i - 1)
 
+    show (ListT l) = "[" ++ show l ++ "]"
+
     show (t :-> u) = show' t True ++ " -> " ++ show' u False
         where show' t l | simple t l = show t
                         | otherwise = "(" ++ show t ++ ")"
 
-              simple (TVar _) _ = True
-              simple (_ :.: _) _ = True
               simple (t :-> u) True = False
-              simple (t :-> u) False = True
+              simple  _ _ = True
 
     show (t :.: u) = "(" ++ show t ++ ", " ++ show u ++ ")"
 
@@ -62,6 +64,10 @@ instance Show HaskellExpr where
 
     show (App f expr) | simple f = show f ++ " (" ++ show expr ++ ")"
                       | otherwise = "(" ++ show f ++ ") (" ++ show expr ++ ")"
+
+    show (Case e cs) = "case " ++ show e ++ " of { " ++ show' cs ++ "}"
+        where show' ((p, e):cs) = p ++ " -> " ++ show e ++ "; "
+              show' [] = ""
 
 -- Check if a function application is "simple" (not needing parens)
 simple :: HaskellExpr -> Bool
