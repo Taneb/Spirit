@@ -1,5 +1,6 @@
 module Spirit (TypeSignature(..), spirit, spirit') where
 
+import Control.Applicative ((<|>))
 import Control.Monad (guard)
 import Data.Char (isAlphaNum)
 import Data.Maybe (fromMaybe)
@@ -30,14 +31,14 @@ spirit' assumptions = reify (nameList $ map fst assumptions) assumptions
 
 -- Try to reify a type
 reify :: [Name] -> [Assumption] -> TypeSignature -> Maybe String
--- reify names assumptions goal | trace ("reify " ++ show assumptions ++ " | " ++ show goal) False = undefined
-reify names@(n:ns) assumptions goal = case match assumptions goal names of
-                                        Nothing -> case goal of
-                                                    t :-> u -> let (as', ns', pattern) = expand t names
-                                                              in reify ns' (as' ++ assumptions) u >>=
-                                                                 \f -> Just $ "\\" ++ pattern ++ " -> " ++ f
-                                                    _ -> Nothing
-                                        m -> m
+reify names@(n:ns) assumptions goal@(t :-> u) = match assumptions goal names <|> reify'
+
+    -- If an outright match didn't work, try pattern matching and reifying the new goal.
+    where reify' = let (as', ns', pattern) = expand t names
+                   in reify ns' (as' ++ assumptions) u >>=
+                      \f -> Just $ "\\" ++ pattern ++ " -> " ++ f
+
+reify names assumptions goal = match assumptions goal names
 
 -- Fully expand a type signature for pattern matching.
 expand :: TypeSignature -> [Name] -> ([Assumption], [Name], String)
