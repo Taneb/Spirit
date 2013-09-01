@@ -5,11 +5,13 @@ module Spirit.Types (TypeSignature(..)
                     , Goal 
                     , Pattern) where
 
+import Spirit.Names
+
 -- ADT for type signatures
 data TypeSignature = TVar Int
                    | TypeSignature :-> TypeSignature
                    | TypeSignature :.: TypeSignature
-                     deriving (Eq, Show)
+                     deriving (Eq)
 
 infixl 9 :.:
 infixr 5 :->
@@ -31,6 +33,21 @@ type Goal = TypeSignature
 
 -- Type of patterns
 type Pattern = String
+
+-- Printing of type signatures
+instance Show TypeSignature where
+    show (TVar i) = nameList !! (i - 1)
+
+    show (t :-> u) = show' t True ++ " -> " ++ show' u False
+        where show' t l | simple t l = show t
+                        | otherwise = "(" ++ show t ++ ")"
+
+              simple (TVar _) _ = True
+              simple (_ :.: _) _ = True
+              simple (t :-> u) True = False
+              simple (t :-> u) False = True
+
+    show (t :.: u) = "(" ++ show t ++ ", " ++ show u ++ ")"
 
 -- Printing of expressions
 instance Show HaskellExpr where

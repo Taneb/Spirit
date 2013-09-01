@@ -1,9 +1,9 @@
 module Spirit (TypeSignature(..), spirit, spirit') where
 
 import Control.Applicative ((<|>))
-import Control.Monad (guard)
 import Data.List (find)
 
+import Spirit.Names
 import Spirit.Types
 
 -- Try to reify a type with no builtins
@@ -12,7 +12,7 @@ spirit = spirit' []
 
 -- Try to reify a type using a given collection of builtins
 spirit' :: [Assumption] -> TypeSignature -> Maybe HaskellExpr
-spirit' assumptions = reify (nameList $ map (show . fst) assumptions) assumptions
+spirit' assumptions = reify (filteredNameList $ map (show . fst) assumptions) assumptions
 
 -- Try to reify a type
 reify :: [Name] -> [Assumption] -> Goal -> Maybe HaskellExpr
@@ -54,10 +54,3 @@ match2 _ _ [] _ = Nothing
 relevant :: Goal -> TypeSignature -> Bool
 relevant g f@(_ :-> u) = f == g || relevant g u
 relevant g t = t == g
-
--- Produce an infinite list of unique names, which don't overlap with the assumptions
-nameList :: [Name] -> [Name]
-nameList as = [replicate k ['a' .. 'z'] | k <- [1..]] >>=
-              sequence >>=
-              \n -> guard (n `notElem` as) >>
-              return n
