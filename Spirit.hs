@@ -2,36 +2,9 @@ module Spirit (TypeSignature(..), spirit, spirit') where
 
 import Control.Applicative ((<|>))
 import Control.Monad (guard)
-import Data.Char (isAlphaNum)
-import Data.Maybe (fromMaybe)
 import Data.List (find)
 
--- ADT for type signatures
-data TypeSignature = TVar Int
-                   | TypeSignature :-> TypeSignature
-                   | TypeSignature :.: TypeSignature
-                     deriving (Eq, Show)
-
-infixl 9 :.:
-infixr 5 :->
-
--- ADT for generated expressions
-data HaskellExpr = Literal String
-                 | Lambda Pattern HaskellExpr
-                 | App HaskellExpr HaskellExpr
-                   deriving (Eq, Show)
-
--- Type of names
-type Name = String
-
--- Type of assumptions
-type Assumption = (HaskellExpr, TypeSignature)
-
--- Type of goals
-type Goal = TypeSignature
-
--- Type of patterns
-type Pattern = String
+import Spirit.Types
 
 -- Try to reify a type with no builtins
 spirit :: TypeSignature -> Maybe HaskellExpr
@@ -43,7 +16,7 @@ spirit' assumptions = reify (nameList $ map (show . fst) assumptions) assumption
 
 -- Try to reify a type
 reify :: [Name] -> [Assumption] -> Goal -> Maybe HaskellExpr
-reify names@(n:ns) assumptions goal@(t :-> u) = match assumptions goal names <|> reify'
+reify names assumptions goal@(t :-> u) = match assumptions goal names <|> reify'
 
     -- If an outright match didn't work, try pattern matching and reifying the new goal.
     where reify' = let (as', ns', pattern) = expand t names
@@ -79,7 +52,7 @@ match2 _ _ [] _ = Nothing
 
 -- Check if a function type is relevant to a goal
 relevant :: Goal -> TypeSignature -> Bool
-relevant g f@(t :-> u) = f == g || relevant g u
+relevant g f@(_ :-> u) = f == g || relevant g u
 relevant g t = t == g
 
 -- Produce an infinite list of unique names, which don't overlap with the assumptions
@@ -88,23 +61,3 @@ nameList as = [replicate k ['a' .. 'z'] | k <- [1..]] >>=
               sequence >>=
               \n -> guard (n `notElem` as) >>
               return n
-
-
-main = do demonstrate "id"    idType
-          demonstrate "const" constType
-          demonstrate "fst"   fstType
-          demonstrate "snd"   sndType
-          demonstrate "uncurry" uncurryType
-          demonstrate "flip"    flipType
-
-    where demonstrate name typ = do putStrLn $ name ++ " :: " ++ show typ
-                                    print . fromMaybe (Literal "undefined") . spirit $ typ
-                                    putStrLn ""
-
-          idType    = TVar 1 :-> TVar 1
-          constType = TVar 1 :-> TVar 2 :-> TVar 1
-          fstType   = TVar 1 :.: TVar 2 :-> TVar 1
-          sndType   = TVar 1 :.: TVar 2 :-> TVar 2
-
-          uncurryType = (TVar 1 :-> TVar 2 :-> TVar 3) :-> TVar 1 :.: TVar 2 :-> TVar 3
-          flipType    = (TVar 1 :-> TVar 2 :-> TVar 3) :-> TVar 2 :-> TVar 1 :-> TVar 3
