@@ -15,56 +15,64 @@ data TypeSignature = TVar Int
 infixl 9 :.:
 infixr 5 :->
 
+-- ADT for generated expressions
+data HaskellExpr = Literal String
+                 | Lambda Pattern HaskellExpr
+                 | App HaskellExpr HaskellExpr
+                   deriving (Eq, Show)
+
 -- Type of names
 type Name = String
 
 -- Type of assumptions
-type Assumption = (Name, TypeSignature)
+type Assumption = (HaskellExpr, TypeSignature)
 
 -- Type of goals
 type Goal = TypeSignature
 
+-- Type of patterns
+type Pattern = String
+
 -- Try to reify a type with no builtins
-spirit :: TypeSignature -> Maybe String
+spirit :: TypeSignature -> Maybe HaskellExpr
 spirit = spirit' []
 
 -- Try to reify a type using a given collection of builtins
-spirit' :: [Assumption] -> TypeSignature -> Maybe String
-spirit' assumptions = reify (nameList $ map fst assumptions) assumptions
+spirit' :: [Assumption] -> TypeSignature -> Maybe HaskellExpr
+spirit' assumptions = reify (nameList $ map (show . fst) assumptions) assumptions
 
 -- Try to reify a type
-reify :: [Name] -> [Assumption] -> Goal -> Maybe String
+reify :: [Name] -> [Assumption] -> Goal -> Maybe HaskellExpr
 reify names@(n:ns) assumptions goal@(t :-> u) = match assumptions goal names <|> reify'
 
     -- If an outright match didn't work, try pattern matching and reifying the new goal.
     where reify' = let (as', ns', pattern) = expand t names
                    in reify ns' (as' ++ assumptions) u >>=
-                      \f -> Just $ "\\" ++ pattern ++ " -> " ++ f
+                      \f -> Just $ Lambda pattern f
 
 reify names assumptions goal = match assumptions goal names
 
 -- Fully expand a type signature for pattern matching.
-expand :: TypeSignature -> [Name] -> ([Assumption], [Name], String)
-expand t@(TVar _) (n:ns) = ([(n, t)], ns, n)
-expand t@(_ :-> _) (n:ns) = ([(n, t)], ns, n)
-expand t@(a :.: b) (n:m:o:ns) = ([(n, t), (m, a), (o, b)], ns, n ++ "@(" ++ m ++ "," ++ o ++ ")")
+expand :: TypeSignature -> [Name] -> ([Assumption], [Name], Pattern)
+expand t@(TVar _) (n:ns) = ([(Literal n, t)], ns, n)
+expand t@(_ :-> _) (n:ns) = ([(Literal n, t)], ns, n)
+expand t@(a :.: b) (n:m:o:ns) = ([(Literal n, t), (Literal m, a), (Literal o, b)], ns, n ++ "@(" ++ m ++ "," ++ o ++ ")")
 
 -- Check if the goal can be fulfilled by some combination of the assumptions
-match :: [Assumption] -> Goal -> [Name] -> Maybe String
+match :: [Assumption] -> Goal -> [Name] -> Maybe HaskellExpr
 match assumptions goal names = match1 assumptions goal <|>
                                match2 names assumptions assumptions goal
 
 -- Try to find an exact match
-match1 :: [Assumption] -> Goal -> Maybe String
+match1 :: [Assumption] -> Goal -> Maybe HaskellExpr
 match1 as g = fmap fst $ find ((g==) . snd) as
 
 -- Try to find a function application match
-match2 :: [Name] -> [Assumption] -> [Assumption] -> Goal -> Maybe String
+match2 :: [Name] -> [Assumption] -> [Assumption] -> Goal -> Maybe HaskellExpr
 match2 names assumptions ((n, t :-> u):as) goal | relevant goal (t :-> u) =
     case reify names assumptions t of
       Nothing -> match2 names assumptions as goal
-      Just r -> let r' = if all isAlphaNum r then r else "(" ++ r ++ ")"
-               in reify names ((n ++ " " ++ r', u) : assumptions) goal
+      Just r -> reify names ((App n r, u) : assumptions) goal
 
 match2 names assumptions (_:as) goal = match2 names assumptions as goal
 match2 _ _ [] _ = Nothing
@@ -90,7 +98,7 @@ main = do demonstrate "id"    idType
           demonstrate "flip"    flipType
 
     where demonstrate name typ = do putStrLn $ name ++ " :: " ++ show typ
-                                    putStrLn . fromMaybe "undefined" . spirit $ typ
+                                    print . fromMaybe (Literal "undefined") . spirit $ typ
                                     putStrLn ""
 
           idType    = TVar 1 :-> TVar 1
