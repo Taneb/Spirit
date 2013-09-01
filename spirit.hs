@@ -51,9 +51,10 @@ expand t@(a :.: b) (n:m:o:ns) = ([(n, t), (m, a), (o, b)], ns, n ++ "@(" ++ m ++
 
 -- Check if the goal can be fulfilled by some combination of the assumptions
 match :: [Assumption] -> Goal -> [Name] -> Maybe String
-match assumptions goal names = case match1 assumptions goal of
-                                 Nothing -> match2 names assumptions assumptions goal
-                                 m -> m
+match assumptions goal names =
+    case match1 assumptions goal of
+      Nothing -> match2 names assumptions assumptions goal
+      m -> m
 
 -- Try to find an exact match
 match1 :: [Assumption] -> Goal -> Maybe String
@@ -66,9 +67,9 @@ match1 [] _ = Nothing
 match2 :: [Name] -> [Assumption] -> [Assumption] -> Goal -> Maybe String
 -- match2 names assumptions ((n, t :-> u):as) goal | trace ("match2 " ++ show assumptions ++ " | " ++ show goal ++ " | " ++ show (t :-> u) ++ " | " ++ show (relevant goal (t :-> u))) False = undefined
 match2 names assumptions ((n, t :-> u):as) goal | relevant goal (t :-> u) =
-                                                    case reify names assumptions t of
-                                                      Nothing -> match2 names assumptions as goal
-                                                      Just r -> let r' = if all isAlphaNum r then r else "(" ++ r ++ ")"
+    case reify names assumptions t of
+      Nothing -> match2 names assumptions as goal
+      Just r -> let r' = if all isAlphaNum r then r else "(" ++ r ++ ")"
                                                                in reify names ((n ++ " " ++ r', u) : assumptions) goal
 match2 names assumptions (_:as) goal = match2 names assumptions as goal
 match2 _ _ [] _ = Nothing
