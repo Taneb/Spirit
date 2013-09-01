@@ -67,7 +67,7 @@ match2 names assumptions ((n, t :-> u):as) goal | relevant goal (t :-> u) =
     case reify names assumptions t of
       Nothing -> match2 names assumptions as goal
       Just r -> let r' = if all isAlphaNum r then r else "(" ++ r ++ ")"
-                                                               in reify names ((n ++ " " ++ r', u) : assumptions) goal
+               in reify names ((n ++ " " ++ r', u) : assumptions) goal
 match2 names assumptions (_:as) goal = match2 names assumptions as goal
 match2 _ _ [] _ = Nothing
 
