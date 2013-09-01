@@ -21,6 +21,9 @@ type Name = String
 -- Type of assumptions
 type Assumption = (Name, TypeSignature)
 
+-- Type of goals
+type Goal = TypeSignature
+
 -- Try to reify a type with no builtins
 spirit :: TypeSignature -> Maybe String
 spirit = spirit' []
@@ -30,7 +33,7 @@ spirit' :: [Assumption] -> TypeSignature -> Maybe String
 spirit' assumptions = reify (nameList $ map fst assumptions) assumptions
 
 -- Try to reify a type
-reify :: [Name] -> [Assumption] -> TypeSignature -> Maybe String
+reify :: [Name] -> [Assumption] -> Goal -> Maybe String
 reify names@(n:ns) assumptions goal@(t :-> u) = match assumptions goal names <|> reify'
 
     -- If an outright match didn't work, try pattern matching and reifying the new goal.
@@ -47,20 +50,20 @@ expand t@(_ :-> _) (n:ns) = ([(n, t)], ns, n)
 expand t@(a :.: b) (n:m:o:ns) = ([(n, t), (m, a), (o, b)], ns, n ++ "@(" ++ m ++ "," ++ o ++ ")")
 
 -- Check if the goal can be fulfilled by some combination of the assumptions
-match :: [Assumption] -> TypeSignature -> [Name] -> Maybe String
+match :: [Assumption] -> Goal -> [Name] -> Maybe String
 match assumptions goal names = case match1 assumptions goal of
                                  Nothing -> match2 names assumptions assumptions goal
                                  m -> m
 
 -- Try to find an exact match
-match1 :: [Assumption] -> TypeSignature -> Maybe String
+match1 :: [Assumption] -> Goal -> Maybe String
 -- match1 ((n, t):as) g | trace ("match1 " ++ n ++ " " ++ show t ++ " | " ++ show g) False = undefined
 match1 ((n, t):as) g | t == g = Just n
                      | otherwise = match1 as g
 match1 [] _ = Nothing
 
 -- Try to find a function application match
-match2 :: [Name] -> [Assumption] -> [Assumption] -> TypeSignature -> Maybe String
+match2 :: [Name] -> [Assumption] -> [Assumption] -> Goal -> Maybe String
 -- match2 names assumptions ((n, t :-> u):as) goal | trace ("match2 " ++ show assumptions ++ " | " ++ show goal ++ " | " ++ show (t :-> u) ++ " | " ++ show (relevant goal (t :-> u))) False = undefined
 match2 names assumptions ((n, t :-> u):as) goal | relevant goal (t :-> u) =
                                                     case reify names assumptions t of
@@ -71,7 +74,7 @@ match2 names assumptions (_:as) goal = match2 names assumptions as goal
 match2 _ _ [] _ = Nothing
 
 -- Check if a function type is relevant to a goal
-relevant :: TypeSignature -> TypeSignature -> Bool
+relevant :: Goal -> TypeSignature -> Bool
 relevant g f@(t :-> u) = f == g || relevant g u
 relevant g t = t == g
 
