@@ -66,8 +66,7 @@ match2 names assumptions ((n, t :-> u):as) goal | relevant goal (t :-> u) =
                                                       Nothing -> match2 names assumptions as goal
                                                       Just r -> let (as', ns', pattern) = expand t names
                                                                in let r' = if all isAlphaNum r then r else "(" ++ r ++ ")"
-                                                                  in reify ns' ((n ++ " " ++ r', u) : as' ++ assumptions) goal >>=
-                                                                  \f -> Just $ "(\\" ++ pattern ++ " -> " ++ f ++ ") " ++ r'
+                                                                  in reify ns' ((n ++ " " ++ r', u) : as' ++ assumptions) goal
 match2 names assumptions (_:as) goal = match2 names assumptions as goal
 match2 _ _ [] _ = Nothing
 

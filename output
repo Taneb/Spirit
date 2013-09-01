@@ -11,7 +11,7 @@ snd :: TVar 1 :.: TVar 2 :-> TVar 2
 \a@(b,c) -> c
 
 uncurry :: (TVar 1 :-> (TVar 2 :-> TVar 3)) :-> (TVar 1 :.: TVar 2 :-> TVar 3)
-\a -> \b@(c,d) -> (\e -> (\f -> a c d) d) c
+\a -> \b@(c,d) -> a c d
 
 flip :: (TVar 1 :-> (TVar 2 :-> TVar 3)) :-> (TVar 2 :-> (TVar 1 :-> TVar 3))
-\a -> \b -> \c -> (\d -> (\e -> a c b) b) c
+\a -> \b -> \c -> a c b
