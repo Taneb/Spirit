@@ -5,7 +5,6 @@ import Control.Monad (guard)
 import Data.Char (isAlphaNum)
 import Data.Maybe (fromMaybe)
 import Data.List (find)
-import Debug.Trace (trace)
 
 -- ADT for type signatures
 data TypeSignature = TVar Int
@@ -56,12 +55,10 @@ match assumptions goal names = match1 assumptions goal <|> match2 names assumpti
 
 -- Try to find an exact match
 match1 :: [Assumption] -> Goal -> Maybe String
--- match1 ((n, t):as) g | trace ("match1 " ++ n ++ " " ++ show t ++ " | " ++ show g) False = undefined
 match1 as g = fmap fst $ find ((g==) . snd) as
 
 -- Try to find a function application match
 match2 :: [Name] -> [Assumption] -> [Assumption] -> Goal -> Maybe String
--- match2 names assumptions ((n, t :-> u):as) goal | trace ("match2 " ++ show assumptions ++ " | " ++ show goal ++ " | " ++ show (t :-> u) ++ " | " ++ show (relevant goal (t :-> u))) False = undefined
 match2 names assumptions ((n, t :-> u):as) goal | relevant goal (t :-> u) =
     case reify names assumptions t of
       Nothing -> match2 names assumptions as goal
