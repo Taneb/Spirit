@@ -1,0 +1,17 @@
+id :: TVar 1 :-> TVar 1
+\a -> a
+
+const :: TVar 1 :-> (TVar 2 :-> TVar 1)
+\a -> \b -> a
+
+fst :: TVar 1 :.: TVar 2 :-> TVar 1
+\a@(b,c) -> b
+
+snd :: TVar 1 :.: TVar 2 :-> TVar 2
+\a@(b,c) -> c
+
+uncurry :: (TVar 1 :-> (TVar 2 :-> TVar 3)) :-> (TVar 1 :.: TVar 2 :-> TVar 3)
+\a -> \b@(c,d) -> (\e -> (\f -> a c d) d) c
+
+flip :: (TVar 1 :-> (TVar 2 :-> TVar 3)) :-> (TVar 2 :-> (TVar 1 :-> TVar 3))
+\a -> \b -> \c -> (\d -> (\e -> a c b) b) c
